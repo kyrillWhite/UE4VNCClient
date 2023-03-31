@@ -325,15 +325,6 @@ void TightEncoding::DrawToTextureBasic(UTexture2D* texture, uint16 xPosition, ui
     FByteBulkData* ImageData = &MipMap->BulkData;
     uint8* rawImageData = (uint8*)ImageData->Lock(LOCK_READ_WRITE);
 
-    uint8 pixelDataOrder[4] = { 0, 1, 2, 3 };
-    if (pixelFormat.bigEndianFlag) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[3]);
-        std::swap(pixelDataOrder[1], pixelDataOrder[2]);
-    }
-    if (pixelFormat.IsTPIXEL() && pixelFormat.redShift > pixelFormat.blueShift) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[2]);
-    }
-
     int32 bytesPerPixel = pixelFormat.IsTPIXEL() ? 3 : (pixelFormat.bitsPerPixel / 8);
     uint16 redMax = (pixelFormat.redMax[0] << 8) | pixelFormat.redMax[1];
     uint16 greenMax = (pixelFormat.greenMax[0] << 8) | pixelFormat.greenMax[1];
@@ -346,28 +337,19 @@ void TightEncoding::DrawToTextureBasic(UTexture2D* texture, uint16 xPosition, ui
             int distOffset = (i + yPosition) * framebufferWidth + (j + xPosition);
             uint64 pixelData;
             std::memcpy(&pixelData, rawData.GetData() + sourceOffset * bytesPerPixel, bytesPerPixel);
+            if (pixelFormat.bigEndianFlag) {
+                std::reverse((uint8*)&pixelData, (uint8*)&pixelData + bytesPerPixel);
+            }
             uint8 r = (pixelData >> pixelFormat.redShift) & redMax;
             uint8 g = (pixelData >> pixelFormat.greenShift) & greenMax;
             uint8 b = (pixelData >> pixelFormat.blueShift) & blueMax;
             uint8 a = (pixelData >> pixelFormat.depth) & alphaMax;
-            uint8 components[4] = {
-                r * 255 / redMax,
-                g * 255 / greenMax,
-                b * 255 / blueMax,
-                255
-            };
+            uint8 alpha = (alphaMax == 0 ? 255 : (a * 255 / alphaMax));
 
-            if (pixelFormat.IsTPIXEL()) {
-                components[3] = 255;
-            }
-            else {
-                components[3] = alphaMax == 0 ? 255 : (a * 255 / alphaMax);
-            }
-
-            rawImageData[distOffset * 4 + 0] = components[pixelDataOrder[0]];
-            rawImageData[distOffset * 4 + 1] = components[pixelDataOrder[1]];
-            rawImageData[distOffset * 4 + 2] = components[pixelDataOrder[2]];
-            rawImageData[distOffset * 4 + 3] = components[pixelDataOrder[3]];
+            rawImageData[distOffset * 4 + 0] = r * 255 / redMax;
+            rawImageData[distOffset * 4 + 1] = g * 255 / greenMax;
+            rawImageData[distOffset * 4 + 2] = b * 255 / blueMax;
+            rawImageData[distOffset * 4 + 3] = pixelFormat.IsTPIXEL() ? 255 : alpha;
         });
     });
     ImageData->Unlock();
@@ -379,16 +361,7 @@ void TightEncoding::DrawToTextureFill(UTexture2D* texture, uint16 xPosition, uin
     FByteBulkData* ImageData = &MipMap->BulkData;
     uint8* rawImageData = (uint8*)ImageData->Lock(LOCK_READ_WRITE);
 
-    uint8 pixelDataOrder[4] = { 0, 1, 2, 3 };
-    if (pixelFormat.bigEndianFlag) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[3]);
-        std::swap(pixelDataOrder[1], pixelDataOrder[2]);
-    }
-    if (pixelFormat.IsTPIXEL() && pixelFormat.redShift > pixelFormat.blueShift) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[2]);
-    }
-
-    int bytesPerPixel = pixelFormat.bitsPerPixel / 8;
+    int bytesPerPixel = pixelFormat.IsTPIXEL() ? 3 : (pixelFormat.bitsPerPixel / 8);
     uint16 redMax = (pixelFormat.redMax[0] << 8) | pixelFormat.redMax[1];
     uint16 greenMax = (pixelFormat.greenMax[0] << 8) | pixelFormat.greenMax[1];
     uint16 blueMax = (pixelFormat.blueMax[0] << 8) | pixelFormat.blueMax[1];
@@ -396,32 +369,22 @@ void TightEncoding::DrawToTextureFill(UTexture2D* texture, uint16 xPosition, uin
 
     uint64 pixelData;
     std::memcpy(&pixelData, data.GetData(), bytesPerPixel);
+    if (pixelFormat.bigEndianFlag) {
+        std::reverse((uint8*)&pixelData, (uint8*)&pixelData + bytesPerPixel);
+    }
     uint8 r = (pixelData >> pixelFormat.redShift) & redMax;
     uint8 g = (pixelData >> pixelFormat.greenShift) & greenMax;
     uint8 b = (pixelData >> pixelFormat.blueShift) & blueMax;
     uint8 a = (pixelData >> pixelFormat.depth) & alphaMax;
-    
-    uint8 components[4] = {
-        r * 255 / redMax,
-        g * 255 / greenMax,
-        b * 255 / blueMax,
-        255
-    };
-
-    if (pixelFormat.IsTPIXEL()) {
-        components[3] = 255;
-    }
-    else {
-        components[3] = alphaMax == 0 ? 255 : (a * 255 / alphaMax);
-    }
+    uint8 alpha = (alphaMax == 0 ? 255 : (a * 255 / alphaMax));
 
     ParallelFor(height, [&](int32 i) {
         ParallelFor(width, [&](int32 j) {
             int distOffset = (i + yPosition) * framebufferWidth + (j + xPosition);
-            rawImageData[distOffset * 4 + 0] = components[pixelDataOrder[0]];
-            rawImageData[distOffset * 4 + 1] = components[pixelDataOrder[1]];
-            rawImageData[distOffset * 4 + 2] = components[pixelDataOrder[2]];
-            rawImageData[distOffset * 4 + 3] = components[pixelDataOrder[3]];
+            rawImageData[distOffset * 4 + 0] = r * 255 / redMax;
+            rawImageData[distOffset * 4 + 1] = g * 255 / greenMax;
+            rawImageData[distOffset * 4 + 2] = b * 255 / blueMax;
+            rawImageData[distOffset * 4 + 3] = pixelFormat.IsTPIXEL() ? 255 : alpha;
         });
     });
 
@@ -445,12 +408,6 @@ void TightEncoding::DrawToTextureJPEG(UTexture2D* texture, uint16 xPosition, uin
     if (!ImageWrapper->GetRaw(ERGBFormat::RGBA, 8, rawData)) {
         return;
     }
-
-    uint8 pixelDataOrder[4] = { 0, 1, 2, 3 };
-    if (pixelFormat.bigEndianFlag) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[3]);
-        std::swap(pixelDataOrder[1], pixelDataOrder[2]);
-    }
     
     FTexture2DMipMap* MipMap = &texture->PlatformData->Mips[0];
     FByteBulkData* ImageData = &MipMap->BulkData;
@@ -460,10 +417,10 @@ void TightEncoding::DrawToTextureJPEG(UTexture2D* texture, uint16 xPosition, uin
         ParallelFor(width, [&](int32 j) {
             int sourceOffset = i * width + j;
             int distOffset = (i + yPosition) * framebufferWidth + (j + xPosition);
-            rawImageData[distOffset * 4 + 0] = rawData[sourceOffset * 4 + pixelDataOrder[0]];
-            rawImageData[distOffset * 4 + 1] = rawData[sourceOffset * 4 + pixelDataOrder[1]];
-            rawImageData[distOffset * 4 + 2] = rawData[sourceOffset * 4 + pixelDataOrder[2]];
-            rawImageData[distOffset * 4 + 3] = rawData[sourceOffset * 4 + pixelDataOrder[3]];
+            rawImageData[distOffset * 4 + 0] = rawData[sourceOffset * 4 + 0];
+            rawImageData[distOffset * 4 + 1] = rawData[sourceOffset * 4 + 1];
+            rawImageData[distOffset * 4 + 2] = rawData[sourceOffset * 4 + 2];
+            rawImageData[distOffset * 4 + 3] = rawData[sourceOffset * 4 + 3];
         });
     });
 
@@ -483,17 +440,8 @@ void TightEncoding::DrawToTextureGradient(UTexture2D* texture, uint16 xPosition,
         decompressedData = data;
     }
 
-    /*TArray<uint8> preprocessedData;
+    TArray<uint8> preprocessedData;
     preprocessedData.SetNum(width * height * preprocBytesPerPixel);
-
-    TArray<uint8> pixelDataOrder = { 0, 1, 2, 3 };
-    if (pixelFormat.bigEndianFlag) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[3]);
-        std::swap(pixelDataOrder[1], pixelDataOrder[2]);
-    }
-    if (pixelFormat.IsTPIXEL() && pixelFormat.redShift > pixelFormat.blueShift) {
-        std::swap(pixelDataOrder[0], pixelDataOrder[2]);
-    }
 
     uint16 redMax = (pixelFormat.redMax[0] << 8) | pixelFormat.redMax[1];
     uint16 greenMax = (pixelFormat.greenMax[0] << 8) | pixelFormat.greenMax[1];
@@ -510,24 +458,12 @@ void TightEncoding::DrawToTextureGradient(UTexture2D* texture, uint16 xPosition,
             uint8 g = (pixelData >> pixelFormat.greenShift) & greenMax;
             uint8 b = (pixelData >> pixelFormat.blueShift) & blueMax;
             uint8 a = (pixelData >> pixelFormat.depth) & alphaMax;
-            uint8 components[4] = {
-                r * 255 / redMax,
-                g * 255 / greenMax,
-                b * 255 / blueMax,
-                255
-            };
+            uint8 alpha = (alphaMax == 0 ? 255 : (a * 255 / alphaMax));
 
-            if (pixelFormat.IsTPIXEL()) {
-                components[3] = 255;
-            }
-            else {
-                components[3] = alphaMax == 0 ? 255 : (a * 255 / alphaMax);
-            }
-
-            preprocessedData[distOffset * 4 + 0] = components[pixelDataOrder[0]];
-            preprocessedData[distOffset * 4 + 1] = components[pixelDataOrder[1]];
-            preprocessedData[distOffset * 4 + 2] = components[pixelDataOrder[2]];
-            preprocessedData[distOffset * 4 + 3] = components[pixelDataOrder[3]];
+            preprocessedData[distOffset * 4 + 0] = r * 255 / redMax;
+            preprocessedData[distOffset * 4 + 1] = g * 255 / greenMax;
+            preprocessedData[distOffset * 4 + 2] = b * 255 / blueMax;
+            preprocessedData[distOffset * 4 + 3] = pixelFormat.IsTPIXEL() ? 255 : alpha;
         });
     });
     FTexture2DMipMap* MipMap = &texture->PlatformData->Mips[0];
@@ -535,18 +471,18 @@ void TightEncoding::DrawToTextureGradient(UTexture2D* texture, uint16 xPosition,
     uint8* rawImageData = (uint8*)ImageData->Lock(LOCK_READ_WRITE);
 
     for (int c = 0; c < 4; c++) {
-        rawImageData[c] = decompressedData[c];
+        rawImageData[c] = preprocessedData[c];
     }
 
     for (int i = 1; i < width; i++) {
-        for (int c = 0; c < 3; c++) {
-            rawData[i * 3 + c] = decompressedData[i * 3 + c] + rawData[(i - 1) * 3 + c];
+        for (int c = 0; c < 4; c++) {
+            rawImageData[i * 4 + c] = preprocessedData[i * 4 + c] + rawImageData[(i - 1) * 4 + c];
         }
     }
 
     for (int i = 1; i < height; i++) {
-        for (int c = 0; c < 3; c++) {
-            rawData[i * width * 3 + c] = decompressedData[i * width * 3 + c] + rawData[(i - 1) * width * 3 + c];
+        for (int c = 0; c < 4; c++) {
+            rawImageData[i * width * 4 + c] = preprocessedData[i * width * 4 + c] + rawImageData[(i - 1) * width * 4 + c];
         }
 
         for (int j = 1; j < width; j++) {
@@ -554,15 +490,24 @@ void TightEncoding::DrawToTextureGradient(UTexture2D* texture, uint16 xPosition,
             int offset_IJ = (i - 1) * width + j;
             int offsetI_J = i * width + j - 1;
             int offset_I_J = (i - 1) * width + j - 1;
-            for (int c = 0; c < 3; c++) {
-                rawData[offsetIJ * 3 + c] =
-                    decompressedData[offsetIJ * 3 + c] +
-                    rawData[offset_IJ * 3 + c] +
-                    rawData[offsetI_J * 3 + c] -
-                    rawData[offset_I_J * 3 + c];
+            for (int c = 0; c < 4; c++) {
+                rawImageData[offsetIJ * 4 + c] =
+                    decompressedData[offsetIJ * 4 + c] +
+                    rawImageData[offset_IJ * 4 + c] +
+                    rawImageData[offsetI_J * 4 + c] -
+                    rawImageData[offset_I_J * 4 + c];
             }
         }
     }
 
-    ImageData->Unlock();*/
+    if (pixelFormat.IsTPIXEL()) {
+        ParallelFor(height, [&](int32 i) {
+            ParallelFor(width, [&](int32 j) {
+                int offset = i * width + j;
+                rawImageData[offset * 4 + 3] = 255;
+            });
+        });
+    }
+
+    ImageData->Unlock();
 }
