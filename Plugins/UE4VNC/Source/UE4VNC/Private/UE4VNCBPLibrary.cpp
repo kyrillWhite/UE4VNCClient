@@ -20,32 +20,26 @@ UVNCClient* UUE4VNCBPLibrary::ConnectToVNCServer(
     EPixelFormatType pixelSize
 )
 {
-    if (!vncClient->Connect(host, port)) {
-        UE_LOG(LogTemp, Error, TEXT("Connect error"));
-        return nullptr;
-    }
-    if (!vncClient->Handshake(password)) {
-        UE_LOG(LogTemp, Error, TEXT("Handshake error"));
-        return nullptr;
-    }
-    if (!vncClient->Initialise(allowJPEG, jpegQuality, compression, shared, pixelSize)) {
-        UE_LOG(LogTemp, Error, TEXT("Initialise error"));
-        return nullptr;
-    }
-
+    vncClient->SetSettings(host, port, password, allowJPEG, jpegQuality, compression, shared, pixelSize);
+    vncClient->FullConnect();
     return vncClient;
 }
 
 UTexture2D* UUE4VNCBPLibrary::UpdateClient(UVNCClient* vncClient)
 {
-    if (vncClient == nullptr || !vncClient->IsInitComplete()) {
+    if (vncClient == nullptr || !vncClient->IsConnected() || !vncClient->IsInitComplete()) {
+        if (vncClient != nullptr && !vncClient->IsConnecting() && !vncClient->IsConnected()) {
+            vncClient->FullConnect();
+        }
         return nullptr;
     }
     if (!vncClient->ClientServerMessages()) {
-        vncClient->Reconnect();
+        vncClient->FullConnect();
+        return nullptr;
     }
     if (!vncClient->ServerClientMessages()) {
-        vncClient->Reconnect();
+        vncClient->FullConnect();
+        return nullptr;
     }
     UTexture2D* texture = vncClient->GetTexture();
     texture->UpdateResource();

@@ -22,6 +22,9 @@ private:
     uint16 rectanglesLeftCount;
     TArray<std::shared_ptr<z_stream>> zStreams;
 
+    void OpenZStreams();
+    void CloseZStreams();
+
 public:
     ServerClient();
     ~ServerClient();
@@ -30,6 +33,7 @@ public:
     void SetPixelFormat(SPixelFormat _pixelFormat);
     bool GetMessage(std::shared_ptr<StoCMessage>& message);
     uint16 GetRectanglesLeftCount();
+    void ReopenZStreams();
 
     bool FramebufferUpdate(std::shared_ptr<StoCMessage>& message);
 };
