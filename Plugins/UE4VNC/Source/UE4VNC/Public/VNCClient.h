@@ -31,7 +31,6 @@ private:
     int compression;
     bool shared;
     EPixelFormatType pixelFormatType;
-    FSocket* socket;
     int majorVersion;
     int minorVersion;
     ESecurityType securityType;
@@ -46,14 +45,17 @@ private:
     UTexture2D* texture;
     TFuture<bool> serverClientMessagesResult;
     TQueue<std::shared_ptr<StoCMessage>> messagesQueue;
+    TSharedFuture<void> connectingResult;
+    FThreadSafeBool destruct;
 
 
 public:
+    FSocket* socket;
     UVNCClient();
     ~UVNCClient();
 
     bool Connect(FString host, int port);
-    bool Reconnect();
+    bool FullConnect();
     bool Handshake(FString password);
     bool Initialise(
         bool _allowJPEG,
@@ -63,11 +65,24 @@ public:
         EPixelFormatType _pixelSize
     );
     bool IsInitComplete();
+    bool IsConnecting();
+    bool IsConnected();
     bool ClientServerMessages();
     bool ServerClientMessages();
     UTexture2D* CreateTexture(int32 inSizeX, int32 inSizeY, SPixelFormat _pixelFormat);
     UTexture2D* GetTexture();
     void UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> framebufferUpdateMessage);
+    void StartAsyncConnect(TFuture<void> _connectingResult);
+    void SetSettings(
+        FString _host,
+        int _port,
+        FString _password,
+        bool _allowJPEG,
+        int _jpegQuality,
+        int _compression,
+        bool _shared,
+        EPixelFormatType _pixelSize
+    );
 
     static bool Recv(FSocket* socket, FTimespan waitTime, uint8* data, int32 bufferSize, int32& bytesRead, bool reverse = true);
     static bool Send(FSocket* socket, FTimespan waitTime, const uint8* data, int32 count, int32& bytesSent, bool reverse = true);

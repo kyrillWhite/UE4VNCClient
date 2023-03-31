@@ -28,7 +28,7 @@ bool Handshaking::ProtocolVersion(int& _majorVersion, int& _minorVersion)
     uint32 pendingDataSize = 12;
 
     uint8 buffer[12];
-    FTimespan waitTime = FTimespan::FromSeconds(10);
+    FTimespan waitTime = FTimespan::FromSeconds(2);
     int bytesRead, bytesSent;
 
     if (!UVNCClient::Recv(socket, waitTime, buffer, pendingDataSize, bytesRead, false)) {

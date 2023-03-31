@@ -23,12 +23,15 @@ UVNCClient::UVNCClient() :
     serverClient(std::make_unique<ServerClient>()),
     initComplete(false),
     texture(nullptr),
-    serverClientMessagesResult(TFuture<bool>())
+    serverClientMessagesResult(TFuture<bool>()),
+    connectingResult(TSharedFuture<void>()),
+    destruct(false)
 {
 }
 
 UVNCClient::~UVNCClient()
 {
+    destruct = true;
     if (socket != nullptr) {
         if (socket->GetConnectionState() == ESocketConnectionState::SCS_Connected) {
             socket->Close();
@@ -66,40 +69,43 @@ bool UVNCClient::Connect(FString _host, int _port)
     return true;
 }
 
-bool UVNCClient::Reconnect()
+bool UVNCClient::FullConnect()
 {
-    bool reconnectSuccessful = false;
-    int attemptCount = 0;
+    serverClient->ReopenZStreams();
+    if (connectingResult.IsValid() && !connectingResult.IsReady()) {
+        return false;
+    }
+    //FAsyncTask<void>* NewTimer = new FAsyncTask<YimerTh>();
 
-    while (!reconnectSuccessful) {
-        attemptCount++;
+    connectingResult = Async(EAsyncExecution::TaskGraph, [&]() {
+        bool reconnectSuccessful = false;
 
-        if (attemptCount == 5) {
-            FGenericPlatformMisc::RequestExit(true);
-        }
-
-        if (socket) {
-            if (!socket->Close()) {
-                UE_LOG(LogTemp, Error, TEXT("Socket close error"));
+        while (!reconnectSuccessful) {
+            if (destruct) {
+                return;
+            }
+            if (socket != nullptr) {
+                if (!socket->Close()) {
+                    continue;
+                }
+            }
+            if (!Connect(host, port)) {
+                UE_LOG(LogTemp, Error, TEXT("Reconnect error. host: %s, port: %i"), *host, port);
                 continue;
             }
-        }
-        if (!Connect(host, port)) {
-            UE_LOG(LogTemp, Error, TEXT("Reconnect error. host: %s, port: %i"), *host, port);
-            continue;
-        }
-        if (!Handshake(password)) {
-            UE_LOG(LogTemp, Error, TEXT("Handshake error"));
-            continue;
-        }
-        if (!Initialise(allowJPEG, jpegQuality, compression, shared, pixelFormatType)) {
-            UE_LOG(LogTemp, Error, TEXT("Initialise error"));
-            continue;
-        }
+            if (!Handshake(password)) {
+                UE_LOG(LogTemp, Error, TEXT("Handshake error"));
+                continue;
+            }
+            if (!Initialise(allowJPEG, jpegQuality, compression, shared, pixelFormatType)) {
+                UE_LOG(LogTemp, Error, TEXT("Initialise error"));
+                continue;
+            }
 
-        UE_LOG(LogTemp, Log, TEXT("Reconnected. host: %s, port: %i"), *host, port);
-        reconnectSuccessful = true;
-    }
+            UE_LOG(LogTemp, Log, TEXT("Reconnected. host: %s, port: %i"), *host, port);
+            reconnectSuccessful = true;
+        }
+    });
     return true;
 }
 
@@ -199,6 +205,16 @@ bool UVNCClient::IsInitComplete()
     return initComplete;
 }
 
+bool UVNCClient::IsConnecting()
+{
+    return connectingResult.IsValid() && !connectingResult.IsReady();
+}
+
+bool UVNCClient::IsConnected()
+{
+    return connectingResult.IsValid() && connectingResult.IsReady();
+}
+
 bool UVNCClient::ClientServerMessages()
 {
     if (!clientServer->FramebufferUpdateRequest(0, 0, framebufferWidth, framebufferHeight)) {
@@ -271,6 +287,23 @@ UTexture2D* UVNCClient::GetTexture()
 void UVNCClient::UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> framebufferUpdateMessage)
 {
     framebufferUpdateMessage->DrawToTexture(texture, pixelFormat, framebufferWidth, framebufferHeight);
+}
+
+void UVNCClient::StartAsyncConnect(TFuture<void> _connectingResult)
+{
+    connectingResult = _connectingResult.Share();
+}
+
+void UVNCClient::SetSettings(FString _host, int _port, FString _password, bool _allowJPEG, int _jpegQuality, int _compression, bool _shared, EPixelFormatType _pixelSize)
+{
+    host = _host;
+    port = _port;
+    password = _password;
+    allowJPEG = _allowJPEG;
+    jpegQuality = _jpegQuality;
+    compression = _compression;
+    shared = _shared;
+    pixelFormatType = _pixelSize;
 }
 
 bool UVNCClient::Recv(FSocket* socket, FTimespan waitTime, uint8* data, int32 bufferSize, int32& bytesRead, bool reverse)

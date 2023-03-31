@@ -2,10 +2,7 @@
 #include "VNCClient.h"
 
 
-ServerClient::ServerClient() :
-    socket(nullptr),
-    rectanglesLeftCount(0),
-    zStreams(TArray<std::shared_ptr<z_stream>>())
+void ServerClient::OpenZStreams()
 {
     for (int i = 0; i < 4; i++) {
         auto zStream = std::make_shared<z_stream>();
@@ -19,11 +16,25 @@ ServerClient::ServerClient() :
     }
 }
 
-ServerClient::~ServerClient()
+void ServerClient::CloseZStreams()
 {
     for (int i = 0; i < 4; i++) {
         inflateEnd(zStreams[i].get());
     }
+    zStreams.Empty();
+}
+
+ServerClient::ServerClient() :
+    socket(nullptr),
+    rectanglesLeftCount(0),
+    zStreams(TArray<std::shared_ptr<z_stream>>())
+{
+    OpenZStreams();
+}
+
+ServerClient::~ServerClient()
+{
+    CloseZStreams();
 }
 
 void ServerClient::SetSocket(FSocket* _socket)
@@ -68,6 +79,12 @@ bool ServerClient::GetMessage(std::shared_ptr<StoCMessage>& message)
 uint16 ServerClient::GetRectanglesLeftCount()
 {
     return rectanglesLeftCount;
+}
+
+void ServerClient::ReopenZStreams()
+{
+    CloseZStreams();
+    OpenZStreams();
 }
 
 bool ServerClient::FramebufferUpdate(std::shared_ptr<StoCMessage>& message)
