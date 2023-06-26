@@ -100,11 +100,11 @@ bool Handshaking::Security(ESecurityType& _securityType)
 
         ESecurityType chosenSecurityType = ESecurityType::Invalid;
 
-        if (securityTypes[(uint8)ESecurityType::VNCAuthentication]) {
-            chosenSecurityType = ESecurityType::VNCAuthentication;
-        }
-        else if (securityTypes[(uint8)ESecurityType::None]) {
+        if (securityTypes[(uint8)ESecurityType::None]) {
             chosenSecurityType = ESecurityType::None;
+        }
+        else if (securityTypes[(uint8)ESecurityType::VNCAuthentication]) {
+            chosenSecurityType = ESecurityType::VNCAuthentication;
         }
 
         UE_LOG(LogTemp, Log, TEXT("Chosen security type: %i"), (uint8)chosenSecurityType);

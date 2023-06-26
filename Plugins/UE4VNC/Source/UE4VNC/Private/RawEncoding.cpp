@@ -59,7 +59,7 @@ void RawEncoding::DrawToTexture(
             int distOffset = (i + yPosition) * framebufferWidth + (j + xPosition);
             uint64 pixelData;
             std::memcpy(&pixelData, data.GetData() + sourceOffset * bytesPerPixel, bytesPerPixel);
-            if (pixelFormat.bigEndianFlag) {
+            if (pixelFormat.bigEndianFlag != !FGenericPlatformProperties::IsLittleEndian()) {
                 std::reverse((uint8*)&pixelData, (uint8*)&pixelData + bytesPerPixel);
             }
             uint8 r = (pixelData >> pixelFormat.redShift) & redMax;

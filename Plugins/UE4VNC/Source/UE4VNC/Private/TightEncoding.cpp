@@ -337,7 +337,7 @@ void TightEncoding::DrawToTextureBasic(UTexture2D* texture, uint16 xPosition, ui
             int distOffset = (i + yPosition) * framebufferWidth + (j + xPosition);
             uint64 pixelData;
             std::memcpy(&pixelData, rawData.GetData() + sourceOffset * bytesPerPixel, bytesPerPixel);
-            if (pixelFormat.bigEndianFlag) {
+            if (pixelFormat.IsTPIXEL() || pixelFormat.bigEndianFlag != !FGenericPlatformProperties::IsLittleEndian()) {
                 std::reverse((uint8*)&pixelData, (uint8*)&pixelData + bytesPerPixel);
             }
             uint8 r = (pixelData >> pixelFormat.redShift) & redMax;
@@ -369,7 +369,7 @@ void TightEncoding::DrawToTextureFill(UTexture2D* texture, uint16 xPosition, uin
 
     uint64 pixelData;
     std::memcpy(&pixelData, data.GetData(), bytesPerPixel);
-    if (pixelFormat.bigEndianFlag) {
+    if (pixelFormat.IsTPIXEL() || pixelFormat.bigEndianFlag != !FGenericPlatformProperties::IsLittleEndian()) {
         std::reverse((uint8*)&pixelData, (uint8*)&pixelData + bytesPerPixel);
     }
     uint8 r = (pixelData >> pixelFormat.redShift) & redMax;

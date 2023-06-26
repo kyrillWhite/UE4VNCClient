@@ -23,6 +23,7 @@ class UE4VNC_API UVNCClient : public UObject
 {
     GENERATED_BODY()
 private:
+    FSocket* socket;
     FString host; 
     int port;
     FString password;
@@ -50,7 +51,6 @@ private:
 
 
 public:
-    FSocket* socket;
     UVNCClient();
     ~UVNCClient();
 
@@ -72,7 +72,6 @@ public:
     UTexture2D* CreateTexture(int32 inSizeX, int32 inSizeY, SPixelFormat _pixelFormat);
     UTexture2D* GetTexture();
     void UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> framebufferUpdateMessage);
-    void StartAsyncConnect(TFuture<void> _connectingResult);
     void SetSettings(
         FString _host,
         int _port,

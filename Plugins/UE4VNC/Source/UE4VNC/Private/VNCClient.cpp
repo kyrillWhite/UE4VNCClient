@@ -195,6 +195,7 @@ bool UVNCClient::Initialise(
         texture = CreateTexture(framebufferWidth, framebufferHeight, pixelFormat);
     }
 
+    UE_LOG(LogTemp, Error, TEXT("Initialisation complete"));
     initComplete = true;
 
     return true;
@@ -289,10 +290,7 @@ void UVNCClient::UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> fram
     framebufferUpdateMessage->DrawToTexture(texture, pixelFormat, framebufferWidth, framebufferHeight);
 }
 
-void UVNCClient::StartAsyncConnect(TFuture<void> _connectingResult)
-{
-    connectingResult = _connectingResult.Share();
-}
+
 
 void UVNCClient::SetSettings(FString _host, int _port, FString _password, bool _allowJPEG, int _jpegQuality, int _compression, bool _shared, EPixelFormatType _pixelSize)
 {
