@@ -42,6 +42,40 @@ UTexture2D* UUE4VNCBPLibrary::UpdateClient(UVNCClient* vncClient)
         return nullptr;
     }
     UTexture2D* texture = vncClient->GetTexture();
-    texture->UpdateResource();
+    //texture->UpdateResource();
     return texture;
+}
+
+USRTClient* UUE4VNCBPLibrary::CreateSRTClient(
+    USRTClient* srtClient,
+    UStaticMeshComponent* mesh,
+    FString host,
+    int port,
+    int buffering,
+    int sourceWidth,
+    int sourceHeight,
+    EAVCodecID codecID,
+    EAVHWDeviceType hwDeviceType
+)
+{
+    if (!srtClient->Initialise(mesh, host, port, buffering, sourceWidth, sourceHeight, codecID, EAVPixelFormat::AV_PIX_FMT_YUV420P, hwDeviceType)) {
+        return nullptr;
+    }
+    return srtClient;
+}
+
+void UUE4VNCBPLibrary::StartSRTListen(USRTClient* srtClient)
+{
+    if (srtClient) {
+        auto future = Async(EAsyncExecution::Thread, [&]() {
+            srtClient->Listen();
+        });
+    }
+}
+
+void UUE4VNCBPLibrary::CloseSRTClient(USRTClient* srtClient)
+{
+    if (srtClient) {
+        srtClient->Close();
+    }
 }
