@@ -3,6 +3,7 @@
 #include <algorithm>
 
 UVNCClient::UVNCClient() :
+    onlyControl(false),
     host(""),
     port(5900),
     password(""),
@@ -19,13 +20,15 @@ UVNCClient::UVNCClient() :
     initialisation(std::make_unique<Initialisation>()),
     framebufferWidth(0),
     framebufferHeight(0),
-    clientServer(std::make_unique<ClientServer>()),
+    clientServer(std::make_shared<ClientServer>()),
     serverClient(std::make_unique<ServerClient>()),
     initComplete(false),
     texture(nullptr),
     serverClientMessagesResult(TFuture<bool>()),
     connectingResult(TSharedFuture<void>()),
-    destruct(false)
+    destruct(false),
+    mesh(nullptr),
+    control(std::make_unique<Control>())
 {
 }
 
@@ -64,6 +67,12 @@ bool UVNCClient::Connect(FString _host, int _port)
     handshaking->SetSocket(socket);
     clientServer->SetSocket(socket);
     serverClient->SetSocket(socket);
+
+    //Async(EAsyncExecution::ThreadPool, [&]() {
+    //    //keyboard->SetClientServer(clientServer);
+    //    Keyboard::clientServer = clientServer;
+    //    Keyboard::Start();
+    //});
 
     UE_LOG(LogTemp, Log, TEXT("Connected. host: %s, port: %i"), *host, port);
     return true;
@@ -218,7 +227,11 @@ bool UVNCClient::IsConnected()
 
 bool UVNCClient::ClientServerMessages()
 {
-    if (!clientServer->FramebufferUpdateRequest(0, 0, framebufferWidth, framebufferHeight)) {
+    if (!onlyControl && !clientServer->FramebufferUpdateRequest(0, 0, framebufferWidth, framebufferHeight)) {
+        return false;
+    }
+
+    if (!HandleInputEvent(EKeys::Invalid, true)) {
         return false;
     }
 
@@ -256,6 +269,7 @@ bool UVNCClient::ServerClientMessages()
         while (socket->HasPendingData(pendingDataSize)) {
             std::shared_ptr<StoCMessage> message;
 
+            #undef GetMessage
             if (!serverClient->GetMessage(message)) {
                 return false;
             }
@@ -274,6 +288,28 @@ bool UVNCClient::ServerClientMessages()
     return true;
 }
 
+bool UVNCClient::HandleInputEvent(FKey key, bool isPressed, bool isShiftHolding)
+{
+    if (!control->IsInputEnabled(key)) {
+        return true;
+    }
+
+    if (key.IsMouseButton() || key == EKeys::Invalid) {
+        SMouseEvent mouseEvent;
+        if (control->HandleMouseEvent(key, isPressed, mouseEvent, framebufferWidth, framebufferHeight)) {
+            return clientServer->PointerEvent(mouseEvent);
+        }
+    }
+    else {
+        SKeyEvent keyEvent;
+        if (control->HandleKeyboardEvent(key, isPressed, keyEvent, isShiftHolding)) {
+            return clientServer->KeyEvent(keyEvent);
+        }
+    }
+    return true;
+}
+
+
 UTexture2D* UVNCClient::CreateTexture(int32 inSizeX, int32 inSizeY, SPixelFormat _pixelFormat)
 {
     EPixelFormat _ePixelFormat = EPixelFormat::PF_R8G8B8A8;
@@ -290,10 +326,22 @@ void UVNCClient::UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> fram
     framebufferUpdateMessage->DrawToTexture(texture, pixelFormat, framebufferWidth, framebufferHeight);
 }
 
-
-
-void UVNCClient::SetSettings(FString _host, int _port, FString _password, bool _allowJPEG, int _jpegQuality, int _compression, bool _shared, EPixelFormatType _pixelSize)
+void UVNCClient::SetSettings(
+    bool _onlyControl,
+    FString _host, int _port,
+    FString _password,
+    bool _allowJPEG,
+    int _jpegQuality,
+    int _compression,
+    bool _shared,
+    EPixelFormatType _pixelSize,
+    UStaticMeshComponent* _mesh,
+    APlayerController* _playerController,
+    UWidgetComponent* _keyboardWidgetComponent,
+    UWidgetInteractionComponent* _widgetInteractionComponent
+)
 {
+    onlyControl = _onlyControl;
     host = _host;
     port = _port;
     password = _password;
@@ -302,6 +350,8 @@ void UVNCClient::SetSettings(FString _host, int _port, FString _password, bool _
     compression = _compression;
     shared = _shared;
     pixelFormatType = _pixelSize;
+    mesh = _mesh;
+    control->SetSettings(_playerController, _mesh, _keyboardWidgetComponent, _widgetInteractionComponent);
 }
 
 bool UVNCClient::Recv(FSocket* socket, FTimespan waitTime, uint8* data, int32 bufferSize, int32& bytesRead, bool reverse)

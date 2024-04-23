@@ -13,6 +13,9 @@
 #include "ClientServer.h"
 #include "ServerClient.h"
 #include "StoCMessage.h"
+#include "Math/UnrealMathUtility.h"
+#include "FKeysMap.h"
+#include "Control.h"
 #include "VNCClient.generated.h"
 
 /**
@@ -24,6 +27,7 @@ class UE4VNC_API UVNCClient : public UObject
     GENERATED_BODY()
 private:
     FSocket* socket;
+    bool onlyControl;
     FString host; 
     int port;
     FString password;
@@ -40,7 +44,7 @@ private:
     SPixelFormat pixelFormat;
     uint16 framebufferWidth;
     uint16 framebufferHeight;
-    std::unique_ptr<ClientServer> clientServer;
+    std::shared_ptr<ClientServer> clientServer;
     std::unique_ptr<ServerClient> serverClient;
     bool initComplete;
     UTexture2D* texture;
@@ -48,7 +52,8 @@ private:
     TQueue<std::shared_ptr<StoCMessage>> messagesQueue;
     TSharedFuture<void> connectingResult;
     FThreadSafeBool destruct;
-
+    UStaticMeshComponent* mesh;
+    std::unique_ptr<Control> control;
 
 public:
     UVNCClient();
@@ -69,10 +74,12 @@ public:
     bool IsConnected();
     bool ClientServerMessages();
     bool ServerClientMessages();
+    bool HandleInputEvent(FKey key, bool isPressed, bool isShiftHolding = false);
     UTexture2D* CreateTexture(int32 inSizeX, int32 inSizeY, SPixelFormat _pixelFormat);
     UTexture2D* GetTexture();
     void UpdateTexture(std::shared_ptr<FramebufferRectangleMessage> framebufferUpdateMessage);
     void SetSettings(
+        bool _onlyControl,
         FString _host,
         int _port,
         FString _password,
@@ -80,7 +87,11 @@ public:
         int _jpegQuality,
         int _compression,
         bool _shared,
-        EPixelFormatType _pixelSize
+        EPixelFormatType _pixelSize,
+        UStaticMeshComponent* _mesh,
+        APlayerController* _playerController,
+        UWidgetComponent* _keyboardWidgetComponent,
+        UWidgetInteractionComponent* _widgetInteractionComponent
     );
 
     static bool Recv(FSocket* socket, FTimespan waitTime, uint8* data, int32 bufferSize, int32& bytesRead, bool reverse = true);

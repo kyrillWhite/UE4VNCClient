@@ -120,3 +120,59 @@ bool ClientServer::SetPixelFormatType(EPixelFormatType pixelFormatType, SPixelFo
 
     return true;
 }
+
+bool ClientServer::KeyEvent(SKeyEvent keyEvent)
+{
+    FTimespan waitTime = FTimespan::FromSeconds(10);
+    int bytesSent;
+
+    ECtoSMessageType messageType = ECtoSMessageType::KeyEvent;
+    TArray<uint8> message = {
+        (uint8)messageType,
+        keyEvent.isDown,
+        0,
+        0,
+        uint8(keyEvent.key >> 24 & 255),
+        uint8(keyEvent.key >> 16 & 255),
+        uint8(keyEvent.key >> 8 & 255),
+        uint8(keyEvent.key & 255),
+    };
+
+    if (!UVNCClient::Send(socket, waitTime, message.GetData(), message.Num(), bytesSent, false)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool ClientServer::PointerEvent(SMouseEvent mouseEvent)
+{
+    FTimespan waitTime = FTimespan::FromSeconds(10);
+    int bytesSent;
+    uint8 buttonMask =
+        mouseEvent.leftPressed        |
+        mouseEvent.middlePressed << 1 |
+        mouseEvent.rightPressed  << 2 |
+        mouseEvent.wheelUp       << 3 |
+        mouseEvent.wheelDown     << 4 |
+        mouseEvent.wheelLeft     << 5 |
+        mouseEvent.wheelRight    << 6;
+
+    ECtoSMessageType messageType = ECtoSMessageType::PointerEvent;
+    TArray<uint8> message = {
+        (uint8)messageType,
+        buttonMask,
+        uint8(mouseEvent.x >> 8 & 255),
+        uint8(mouseEvent.x & 255),
+        uint8(mouseEvent.y >> 8 & 255),
+        uint8(mouseEvent.y & 255),
+    };
+
+    //message.Append((uint8*)&position, sizeof(position));
+
+    if (!UVNCClient::Send(socket, waitTime, message.GetData(), message.Num(), bytesSent, false)) {
+        return false;
+    }
+
+    return true;
+}

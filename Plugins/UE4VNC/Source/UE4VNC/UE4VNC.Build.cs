@@ -65,7 +65,10 @@ public class UE4VNC : ModuleRules
                 "RHI",
                 "RenderCore",
                 "Projects",
-                "ImageWriteQueue"
+                "ImageWriteQueue",
+                "InputCore",
+                "ProceduralMeshComponent",
+                "UMG"
 		        // ... add other public dependencies that you statically link with here ...
 	        }
         );

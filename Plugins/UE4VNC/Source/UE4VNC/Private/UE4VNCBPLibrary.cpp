@@ -10,6 +10,11 @@ UUE4VNCBPLibrary::UUE4VNCBPLibrary(const FObjectInitializer& ObjectInitializer)
 
 UVNCClient* UUE4VNCBPLibrary::ConnectToVNCServer(
     UVNCClient* vncClient,
+    UStaticMeshComponent* mesh,
+    APlayerController* playerController,
+    UWidgetComponent* keyboardWidgetComponent,
+    UWidgetInteractionComponent* widgetInteractionComponent,
+    bool onlyControl,
     FString host,
     int port,
     FString password,
@@ -20,7 +25,7 @@ UVNCClient* UUE4VNCBPLibrary::ConnectToVNCServer(
     EPixelFormatType pixelSize
 )
 {
-    vncClient->SetSettings(host, port, password, allowJPEG, jpegQuality, compression, shared, pixelSize);
+    vncClient->SetSettings(onlyControl, host, port, password, allowJPEG, jpegQuality, compression, shared, pixelSize, mesh, playerController, keyboardWidgetComponent, widgetInteractionComponent);
     vncClient->FullConnect();
     return vncClient;
 }
@@ -42,8 +47,23 @@ UTexture2D* UUE4VNCBPLibrary::UpdateClient(UVNCClient* vncClient)
         return nullptr;
     }
     UTexture2D* texture = vncClient->GetTexture();
-    //texture->UpdateResource();
+    #undef UpdateResource
+    texture->UpdateResource();
     return texture;
+}
+
+void UUE4VNCBPLibrary::HandleAnyKeyPress(UVNCClient* vncClient, FKey key, bool isShiftHolding)
+{
+    if (vncClient) {
+        vncClient->HandleInputEvent(key, true, isShiftHolding);
+    }
+}
+
+void UUE4VNCBPLibrary::HandleAnyKeyRelease(UVNCClient* vncClient, FKey key)
+{
+    if (vncClient) {
+        vncClient->HandleInputEvent(key, false);
+    }
 }
 
 USRTClient* UUE4VNCBPLibrary::CreateSRTClient(

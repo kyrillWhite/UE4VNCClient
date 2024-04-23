@@ -47,6 +47,7 @@ void ServerClient::SetPixelFormat(SPixelFormat _pixelFormat)
     pixelFormat = _pixelFormat;
 }
 
+#undef GetMessage
 bool ServerClient::GetMessage(std::shared_ptr<StoCMessage>& message)
 {
     if (rectanglesLeftCount > 0) {
