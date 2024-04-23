@@ -11,5 +11,7 @@ UENUM()
 enum class ECtoSMessageType : uint8 {
     SetPixelFormat = 0,
     SetEncodings = 2,
-    FramebufferUpdateRequest = 3
+    FramebufferUpdateRequest = 3,
+    KeyEvent = 4,
+    PointerEvent = 5
 };

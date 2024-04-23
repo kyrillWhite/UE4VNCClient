@@ -22,6 +22,11 @@ class UUE4VNCBPLibrary : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "VNC Connect"), Category = "UE4VNC")
 	static UVNCClient* ConnectToVNCServer(
 		UVNCClient* vncClient,
+		UStaticMeshComponent* mesh,
+		APlayerController* playerController,
+		UWidgetComponent* keyboardWidgetComponent,
+		UWidgetInteractionComponent* widgetInteractionComponent,
+		bool onlyControl,
 		FString host,
 		int port = 5900,
 		FString password = "",
@@ -35,7 +40,12 @@ class UUE4VNCBPLibrary : public UBlueprintFunctionLibrary
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "VNC Update Client"), Category = "UE4VNC")
 	static UTexture2D* UpdateClient(UVNCClient* vncClient);
 
-	UFUNCTION(BlueprintCallable, meta = (DisplayName = "SRT Connect"), Category = "UE4VNC")
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Handle Any Key Press"), Category = "UE4VNC")
+	static void HandleAnyKeyPress(UVNCClient* vncClient, FKey key, bool isShiftHolding);
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Handle Any Key Release"), Category = "UE4VNC")
+	static void HandleAnyKeyRelease(UVNCClient* vncClient, FKey key);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Create SRT"), Category = "UE4VNC")
 	static USRTClient* CreateSRTClient(
 		USRTClient* srtClient,
 		UStaticMeshComponent* mesh,
