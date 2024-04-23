@@ -7,6 +7,7 @@
 class FUE4VNCModule : public IModuleInterface
 {
 public:
+	// TArray<void*> DLLHandles;
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
